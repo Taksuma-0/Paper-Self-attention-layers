@@ -23,6 +23,7 @@ Los resultados de nuestros experimentos, realizados sobre un subconjunto del dat
 
 ## Estructura del Proyecto
 
+```plaintext
 attention-cnn/
 │
 ├── benchmark_results/              # Carpeta de resultados de un benchmark de prueba
