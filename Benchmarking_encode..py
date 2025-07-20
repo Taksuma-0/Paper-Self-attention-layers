@@ -23,11 +23,11 @@ from utils.logging import get_num_parameter, human_format
 from tensorboardX import SummaryWriter
 
 ## Hiperparametros para el benchmark general
-NUM_EPOCHS = 5
+NUM_EPOCHS = 10
 BATCH_SIZE = 8
 LEARNING_RATE = 1e-4
-NUM_TRAIN_IMAGES =512
-NUM_TEST_IMAGES = 128
+NUM_TRAIN_IMAGES =1000
+NUM_TEST_IMAGES = 250
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BASE_OUTPUT_DIR = "benchmark_results"
 
