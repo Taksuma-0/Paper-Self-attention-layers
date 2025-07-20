@@ -14,8 +14,8 @@ from sklearn.metrics import confusion_matrix
 import seaborn as sns
 import numpy as np
 
-### Obtenemos de cada modulo lo necesario para realizar el bnenchmarking
-from models.transformer import BertImage
+### Obtenemos de cada modulo lo necesario para realizar el benchmarking
+from models.transformer import BertImage ## Modelo original cargado
 from models.bert import BertConfig
 from utils.learning_rate import linear_warmup_cosine_lr_scheduler
 from utils.plotting import plot_attention_positions_all_layers
@@ -33,10 +33,15 @@ BASE_OUTPUT_DIR = "benchmark_results"
 
 
 print(f"Cargando subconjunto de CIFAR-10 ({NUM_TRAIN_IMAGES} para entrenar, {NUM_TEST_IMAGES} para testeo)")
+
+## Lo siguiente es utilizado para trabajar las imagenes segun como el modelo original
+#  las usa respecto a las dimensiones requeridas.
 transform = transforms.Compose([
     transforms.ToTensor(),
-    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)) ## Valores ya obtenidos de CIFAR-10, deviacion y medias
 ])
+
+## Carga y split del dataset CIFAR-10
 full_train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
 full_test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
 train_subset = Subset(full_train_dataset, range(NUM_TRAIN_IMAGES))
@@ -58,7 +63,7 @@ def plot_confusion_matrix(y_true, y_pred, class_names, output_dir, encoding_type
     plt.close(fig)
     print(f"Matriz de confusión guardada en: {plot_path}")
 
-### En esta funcion corremos el experimento como tal
+### En esta funcion corremos el experimento.
 def run_experiment(encoding_type: str):
     print("\n" + "="*60)
     print(f"--- Iniciando experimento para: {encoding_type} ---")
@@ -68,7 +73,8 @@ def run_experiment(encoding_type: str):
     os.makedirs(output_dir, exist_ok=True)
     writer = SummaryWriter(logdir=output_dir)
     print(f"Resultados, logs y gráficos se guardarán en: {output_dir}")
-
+    
+    ##Configuración de los Hiperparametros
     config = {
         "num_hidden_layers": 6, "num_attention_heads": 9, "hidden_size": 396,
         "intermediate_size": 512, "hidden_act": "gelu", "hidden_dropout_prob": 0.1,
@@ -78,8 +84,14 @@ def run_experiment(encoding_type: str):
         "share_position_encoding": False, "gaussian_init_sigma_std": 0.01,
         "gaussian_init_mu_std": 2.0
     }
+
+    ##Lógica de selección de Encoding :
+    # Basado en el `encoding_type` de entrada, se actualiza el diccionario `config`
+    # con los flags booleanos correctos que activan las clases y logicas
+    # correspondientes dentro del código del modelo en `models/bert.py`----.
+    # Esto haciendo las modificaciones correspondientes para que cada caso funcione
     
-    ## Aqui se setea cada eencoding a usar como tal
+    ## Aqui se setea cada eencoding a usar como tal, e indicamos las flags para su uso
     if encoding_type == 'relativo_aprendido_contenido':
         config.update({"use_learned_2d_encoding": True, "relative_position_embedding": True, "use_gaussian_attention": False, "use_attention_data": True, "query_positional_score": True})
     elif encoding_type == 'relativo_aprendido_solo_posicion':
@@ -93,7 +105,11 @@ def run_experiment(encoding_type: str):
 
     with open(os.path.join(output_dir, "config.yaml"), "w") as f:
         yaml.dump(config, f, sort_keys=False)
-
+    
+    ## AÑADIDURA a encoding absoluto.
+    # El encoding absoluto requiere una modificación en la arquitectura que no está
+    # en el código original, por lo que definimos una clase sobre la marcha
+    # que hereda de BertImage y añade el embedding posicional absoluto.
     if encoding_type == 'absoluto':
         class BertImageAbsolute(BertImage):
             def __init__(self, config, num_classes):
@@ -112,10 +128,13 @@ def run_experiment(encoding_type: str):
                 return self.classifier(cls_representation)
         model = BertImageAbsolute(config, num_classes=10)
     else:
+        # Para todos los demas encodings, usamos la clase BertImage estándar
         model = BertImage(config, num_classes=10)
     
-    model.to(DEVICE)
+    model.to(DEVICE) ## Se carga el modelo en GPU, si esta disponible
     
+    ## Seccion de entrenamiento.
+    ## Se sigue una idea sencilla de entrenamiento.
     num_params, _ = get_num_parameter(model)
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
     criterion = nn.CrossEntropyLoss()
@@ -155,7 +174,7 @@ def run_experiment(encoding_type: str):
     avg_test_loss = total_test_loss / len(test_loader)
     
     plot_confusion_matrix(all_labels, all_preds, CLASS_NAMES, output_dir, encoding_type)
-
+    ## Nos muestra por CLI en tiempo real el entrenamiento y metricas
     writer.add_scalar('loss/test', avg_test_loss, NUM_EPOCHS)
     writer.add_scalar('accuracy/test', accuracy, NUM_EPOCHS)
     print(f"Resultado para '{encoding_type}': Precisión = {accuracy:.2f}%, Pérdida de Test = {avg_test_loss:.4f}")
@@ -163,6 +182,7 @@ def run_experiment(encoding_type: str):
     
     return {"accuracy": accuracy, "test_loss": avg_test_loss, "params": num_params}
 
+### Creación de graficos finales
 def create_summary_plots(results, output_dir):
     print("\nGenerando gráficos de resumen")
     encoding_types = list(results.keys())
@@ -228,7 +248,10 @@ if __name__ == "__main__":
         'relativo_aprendido_contenido', 'relativo_aprendido_solo_posicion',
         'cuadratico_gaussiano', 'absoluto', 'sin_encoding'
     ]
-    
+    ## Sección de prueba
+    # Se itera sobre cada tipo de encoding a probar. Para cada uno, se ejecuta
+    # el experimento completo, se mide el tiempo y se guardan las métricas
+    # resultantes (precisión, pérdida, etc.) en un diccionario, results.
     results = {}
     for encoding in encodings_to_test:
         start_time = time.time()
