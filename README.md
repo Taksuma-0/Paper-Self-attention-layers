@@ -37,6 +37,7 @@ attention-cnn/
 ├── Dockerfile                      # Receta para construir el entorno reproducible
 ├── README.md                       # Este archivo
 └── train.py                        # Script de entrenamiento original del paper
+```plaintext
 
 
 ## Despliegue y Ejecución
