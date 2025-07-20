@@ -116,4 +116,4 @@ El análisis completo, la discusión y las conclusiones de estos resultados se e
 
 ## Agradecimientos
 
-Este trabajo es una extensión y un análisis basado en el código y los conceptos presentados por Cordonnier, Loukas y Jaggi en su paper "On the Relationship between Self-Attention and Convolutional Layers". Se agradece a los autores por hacer su código público.
+Este trabajo es una extensión y un análisis basado en el código y los conceptos presentados por Cordonnier, Loukas y Jaggi en su paper "On the Relationship between Self-Attention and Convolutional Layers". Se agradece a los autores por hacer su código público..
